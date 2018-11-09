@@ -1,8 +1,0 @@
-# Define the goal
-uint32 mission  # Specify which dishwasher we want to use
----
-# Define the result
-bool mission_cleared
----
-# Define a feedback message
-float32 feedback
