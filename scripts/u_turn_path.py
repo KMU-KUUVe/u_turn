@@ -8,6 +8,9 @@ from obstacle_detector.msg import SegmentObstacle
 from geometry_msgs.msg import Point
 from ackermann_msgs.msg import AckermannDriveStamped
 
+from u_turn_client import U_turn_Client
+
+
 #front x +
 #left y +
 class u_turn:
@@ -28,14 +31,18 @@ class u_turn:
 		self.lateral_offset = rospy.get_param("/u_turn/lateral_offset")
 		self.theta_error_factor = rospy.get_param("/u_turn/theta_error_factor")
 		self.lateral_error_factor = rospy.get_param("/u_turn/lateral_error_factor")
+		
+		self.detect_crosswalk = U_turn_Client()
 
 	def obstacles_cb(self, data):
 		self.updateParam()
 		theta = 0.0
 		gradient = 0.0
 		acker_data = AckermannDriveStamped()
-		acker_data.drive.speed = self.throttle;
-
+		acker_data.drive.speed = self.throttle
+		'''
+		if self.detect_crosswalk given Result, acker_data.drive.speed = 0  
+		'''	
 		first_point = Point(0, 0, 0)
 		last_point = Point(0, 0, 0)
 
