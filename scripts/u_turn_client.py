@@ -10,16 +10,17 @@ class U_turn_Client:
 		self.client = actionlib.SimpleActionClient('cross_walk_detect_goal', u_turnAction)
 		self.speed = 0
 		self.goal = u_turnGoal()
+		self.crosswalk_detected = False
 
 	def execute(self):
 		self.client.wait_for_server()
 		
 		# choose feedback or result
-		self.client.send_goal(goal, feedback_cb = self.feedback_speed)
+		self.client.send_goal(goal)
 		self.client.wait_for_result()
 
-	def feedback_speed(self, feedback):
-		self.speed = feedback
+		self.crosswalk_detected = True
+
 
 if __name__ == '__main__':
 	try:

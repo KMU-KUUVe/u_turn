@@ -8,38 +8,73 @@ from obstacle_detector.msg import SegmentObstacle
 from geometry_msgs.msg import Point
 from ackermann_msgs.msg import AckermannDriveStamped
 
-from u_turn_client import U_turn_Client
+from mission_planner.msg import MissionPlannerAction, MissionPlannerGoal, MissionPlannerResult, MissionPlannerFeedback
+from u_turn.msg import u_turnAction, u_turnGoal, u_turnFeedback
 
 
 #front x +
 #left y +
 class u_turn:
 	def __init__(self):
-		self.pub = rospy.Publisher('ackermann', AckermannDriveStamped, queue_size=10)		
-		self.sub = rospy.Subscriber('raw_obstacles', Obstacles, self.obstacles_cb)
 		rospy.init_node('u_turn', anonymous=True)
+
+		self.pub = rospy.Publisher('ackermann', AckermannDriveStamped, queue_size=10)		
+		#self.sub = rospy.Subscriber('raw_obstacles', Obstacles, self.obstacles_cb)
+		
+		# Client
+		self.client = actionlib.SimpleActionClient('cross_walk_detect_goal', u_turnAction)
+		self.goal = u_turnGoal()
+
+		# Server
+		self.server = actionlib.SimpleActionServer('u_turn', MissionPlannerAction, execute_cb=execute_cb, auto_start=False)
+		self.result = MissionPlannerResult()
+
+		self.is_detect_crosswalk = False
 		self.max_theta = rospy.get_param("/u_turn/max_theta", 45)
 		self.throttle = rospy.get_param("/u_turn/throttle", 0)	
 		self.lateral_offset = rospy.get_param("/u_turn/lateral_offset", 3.0)
 		self.theta_error_factor = rospy.get_param("/u_turn/theta_error_factor", 1.0)
 		self.lateral_error_factor = rospy.get_param("/u_turn/lateral_error_factor", 1.0)
 		self.right_steer_scale = rospy.get_param("/u_turn/right_steer_scale", 2.0)	
-		self.left_steer_offset = rospy.get_param("/u_turn/left_steer_offset", 3)	
+		self.left_steer_offset = rospy.get_param("/u_turn/left_steer_offset", 3)
+
+		self.mission_finished = False
 
 	def updateParam(self):	
 		self.max_theta = rospy.get_param("/u_turn/max_theta")	
 		self.lateral_offset = rospy.get_param("/u_turn/lateral_offset")
 		self.theta_error_factor = rospy.get_param("/u_turn/theta_error_factor")
 		self.lateral_error_factor = rospy.get_param("/u_turn/lateral_error_factor")
-		
-		self.detect_crosswalk = U_turn_Client()
+
+	def crosswalk_done_cb(self, result):
+		self.is_detect_crosswalk = True
+		acker_data = AckermannDriveStamped()
+		acker_data.drive.speed = 0
+		acker_data.drive.steering_angle = 0
+		self.pub.publish(acker_data)
+################
+		self.server.set_succeeded(self.result)
+################
+
+	# LiDAR Algorithm Start
+	def execute_cb(self, goal):
+		# find server!
+		self.client.wait_for_server()
+		# send goal to cross walk node
+		self.client.send_goal(self.goal, done_cb=crosswalk_done_cb)
+		# run algotihm
+		self.sub = rospy.Subscriber('raw_obstacles', Obstacles, self.obstacles_cb)
 
 	def obstacles_cb(self, data):
 		self.updateParam()
 		theta = 0.0
 		gradient = 0.0
 		acker_data = AckermannDriveStamped()
-		acker_data.drive.speed = self.throttle
+
+		self.client.wait_for_server()
+		self.client.send_goal(goal)
+		#self.client.wait_for_result()
+
 		'''
 		if self.detect_crosswalk given Result, acker_data.drive.speed = 0  
 		'''	
@@ -93,8 +128,10 @@ class u_turn:
 
 		print("speed : " + str(acker_data.drive.speed))
 		print("steering : " + str(acker_data.drive.steering_angle))
-		self.pub.publish(acker_data)
-		
+
+		# don't send messages if detect a crosswalk line.
+		if is_detect_crosswalk == False:
+			self.pub.publish(acker_data)
 		
 		
 if __name__ == '__main__':

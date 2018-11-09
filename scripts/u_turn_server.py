@@ -7,9 +7,14 @@ from u_turn_path import u_turn
 
 
 def execute_cb(goal):
-	rospy.loginfo("Goal Received")
+	rospy.loginfo("u_turn node start")
 	result = MissionPlannerResult()
 	u_turn_mission = u_turn()
+
+	r = rospy.Rate(500)
+	while not rospyy.is_shutdown():
+		if u_turn_mission.mission_finished == True
+
 	action_server.set_succeeded(result)
 
 
