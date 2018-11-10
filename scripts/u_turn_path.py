@@ -28,7 +28,6 @@ class u_turn:
 
 		self.server = actionlib.SimpleActionServer('u_turn_and_crosswalk_stop', MissionPlannerAction, execute_cb=self.execute_cb, auto_start=False)
 		self.server.start()
-		self.result = MissionPlannerResult()
 
 		self.is_detect_crosswalk = False
 		self.max_theta = rospy.get_param("/u_turn/max_theta", 45)
@@ -39,7 +38,7 @@ class u_turn:
 		self.right_steer_scale = rospy.get_param("/u_turn/right_steer_scale", 2.0)	
 		self.left_steer_offset = rospy.get_param("/u_turn/left_steer_offset", 3)
 
-		self.mission_finished = False
+		self.finish_flag = False
 
 	def updateParam(self):	
 		self.max_theta = rospy.get_param("/u_turn/max_theta")	
@@ -47,26 +46,33 @@ class u_turn:
 		self.theta_error_factor = rospy.get_param("/u_turn/theta_error_factor")
 		self.lateral_error_factor = rospy.get_param("/u_turn/lateral_error_factor")
 
-	def crosswalk_done_cb(self, result):
+	def crosswalk_done_cb(self, state, result):
 		self.is_detect_crosswalk = True
 		acker_data = AckermannDriveStamped()
 		acker_data.drive.speed = 0
 		acker_data.drive.steering_angle = 0
 		self.pub.publish(acker_data)
-################
-		self.server.set_succeeded(self.result)
-################
+
+		self.finish_flag = True
 
 	# LiDAR Algorithm Start
 	def execute_cb(self, goal):
 		# find server!
 		self.client.wait_for_server()
-		rospy.loginfo("execute_cb")
 		# send goal to cross walk node
 		self.client.send_goal(self.goal, done_cb=self.crosswalk_done_cb)
-		rospy.loginfo("execute_cb2")
 		# run algotihm
 		self.sub = rospy.Subscriber('raw_obstacles', Obstacles, self.obstacles_cb)
+
+		result = MissionPlannerResult()
+
+		r = rospy.Rate(100)
+		while not rospy.is_shutdown():
+			if(self.finish_flag == True):
+				self.server.set_succeeded(result)	
+				break
+			r.sleep()
+		
 
 	def obstacles_cb(self, data):
 		self.updateParam()
