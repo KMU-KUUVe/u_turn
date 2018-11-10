@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import math
+import actionlib
 
 from std_msgs.msg import String
 from obstacle_detector.msg import Obstacles
@@ -22,11 +23,11 @@ class u_turn:
 		#self.sub = rospy.Subscriber('raw_obstacles', Obstacles, self.obstacles_cb)
 		
 		# Client
-		self.client = actionlib.SimpleActionClient('cross_walk_detect_goal', u_turnAction)
+		self.client = actionlib.SimpleActionClient('crosswalk_stop', u_turnAction)
 		self.goal = u_turnGoal()
 
-		# Server
-		self.server = actionlib.SimpleActionServer('u_turn', MissionPlannerAction, execute_cb=execute_cb, auto_start=False)
+		self.server = actionlib.SimpleActionServer('u_turn_and_crosswalk_stop', MissionPlannerAction, execute_cb=self.execute_cb, auto_start=False)
+		self.server.start()
 		self.result = MissionPlannerResult()
 
 		self.is_detect_crosswalk = False
@@ -60,8 +61,10 @@ class u_turn:
 	def execute_cb(self, goal):
 		# find server!
 		self.client.wait_for_server()
+		rospy.loginfo("execute_cb")
 		# send goal to cross walk node
-		self.client.send_goal(self.goal, done_cb=crosswalk_done_cb)
+		self.client.send_goal(self.goal, done_cb=self.crosswalk_done_cb)
+		rospy.loginfo("execute_cb2")
 		# run algotihm
 		self.sub = rospy.Subscriber('raw_obstacles', Obstacles, self.obstacles_cb)
 
