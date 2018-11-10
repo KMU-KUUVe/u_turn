@@ -80,8 +80,8 @@ class u_turn:
 		gradient = 0.0
 		acker_data = AckermannDriveStamped()
 
-		self.client.wait_for_server()
-		self.client.send_goal(goal)
+		#self.client.wait_for_server()
+		#self.client.send_goal(self.goal)
 		#self.client.wait_for_result()
 
 		'''
@@ -106,6 +106,7 @@ class u_turn:
 		if(last_point.x == first_point.x):
 			acker_data.drive.steering_angle = -26
 		else:
+			rospy.loginfo
 			gradient = (last_point.y - first_point.y)/(last_point.x - first_point.x)
 			theta = (math.atan(gradient)*180)/math.pi
 
@@ -133,13 +134,16 @@ class u_turn:
 				acker_data.drive.steering_angle = -26
 			else:
 				pass
-				
 
+
+		acker_data.drive.speed = self.throttle
+				
 		print("speed : " + str(acker_data.drive.speed))
 		print("steering : " + str(acker_data.drive.steering_angle))
+		print("-----------------------------------")
 
 		# don't send messages if detect a crosswalk line.
-		if is_detect_crosswalk == False:
+		if self.is_detect_crosswalk == False:
 			self.pub.publish(acker_data)
 		
 		

@@ -32,3 +32,13 @@ scan_filter_chain:
     min_y: -100.0                                             
     min_z: -0.28
 
+- name: front_box_filter
+  type: laser_filters/LaserScanBoxFilter
+  params:
+    box_frame: laser 
+    max_x: 100.0
+    max_y: 10.0
+    max_z: 0.3
+    min_x: 6.5 # front detection threshold
+    min_y: -10.0                                             
+    min_z: -0.28
