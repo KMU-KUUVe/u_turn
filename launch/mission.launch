@@ -7,6 +7,7 @@
   
 
   <node pkg="u_turn" name="u_turn" type="u_turn_path.py" output="screen">
+	<remap from="raw_obstacles" to="u_turn_raw_obstacles"/>
 	  <param name="throttle" value="3" />
 	  <param name="max_theta" value="45" />
 	  <param name="lateral_offset" type="double" value="4.0" /> <!-- car: 0.6 -->
@@ -18,6 +19,7 @@
 
   <node name="obstacle_extractor" pkg="obstacle_detector" type="obstacle_extractor_node">
 	<remap from="scan" to="u_turn_scan_filtered"/>
+	<remap from="raw_obstacles" to="u_turn_raw_obstacles"/>
     <param name="active"               value="true"/>
     <param name="use_scan"             value="true"/>
     <param name="use_pcl"              value="false"/>
