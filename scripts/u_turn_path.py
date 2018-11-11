@@ -29,7 +29,6 @@ class u_turn:
 		self.server = actionlib.SimpleActionServer('u_turn_and_crosswalk_stop', MissionPlannerAction, execute_cb=self.execute_cb, auto_start=False)
 		self.server.start()
 
-		self.is_detect_crosswalk = False
 		self.max_theta = rospy.get_param("/u_turn/max_theta", 45)
 		self.throttle = rospy.get_param("/u_turn/throttle", 0)	
 		self.lateral_offset = rospy.get_param("/u_turn/lateral_offset", 3.0)
@@ -38,6 +37,7 @@ class u_turn:
 		self.right_steer_scale = rospy.get_param("/u_turn/right_steer_scale", 2.0)	
 		self.left_steer_offset = rospy.get_param("/u_turn/left_steer_offset", 3)
 
+		self.start_flag = False
 		self.finish_flag = False
 
 	def updateParam(self):	
@@ -47,7 +47,6 @@ class u_turn:
 		self.lateral_error_factor = rospy.get_param("/u_turn/lateral_error_factor")
 
 	def crosswalk_done_cb(self, state, result):
-		self.is_detect_crosswalk = True
 		acker_data = AckermannDriveStamped()
 		acker_data.drive.speed = 0
 		acker_data.drive.steering_angle = 0
@@ -66,85 +65,89 @@ class u_turn:
 
 		result = MissionPlannerResult()
 
+		self.start_flag = True	
+
 		r = rospy.Rate(100)
 		while not rospy.is_shutdown():
 			if(self.finish_flag == True):
+				self.start_flag = False
 				self.server.set_succeeded(result)	
 				break
 			r.sleep()
 		
 
 	def obstacles_cb(self, data):
-		self.updateParam()
-		theta = 0.0
-		gradient = 0.0
-		acker_data = AckermannDriveStamped()
+		if(self.start_flag == True):
+			self.updateParam()
+			theta = 0.0
+			gradient = 0.0
+			acker_data = AckermannDriveStamped()
 
-		#self.client.wait_for_server()
-		#self.client.send_goal(self.goal)
-		#self.client.wait_for_result()
+			#self.client.wait_for_server()
+			#self.client.send_goal(self.goal)
+			#self.client.wait_for_result()
 
-		'''
-		if self.detect_crosswalk given Result, acker_data.drive.speed = 0  
-		'''	
-		first_point = Point(0, 0, 0)
-		last_point = Point(0, 0, 0)
+			'''
+			if self.detect_crosswalk given Result, acker_data.drive.speed = 0  
+			'''	
+			first_point = Point(0, 0, 0)
+			last_point = Point(0, 0, 0)
 
-		for segment_data in data.segments:
-			first_point.x = first_point.x + segment_data.first_point.x
-			last_point.x = last_point.x + segment_data.last_point.x
-			first_point.y = first_point.y + segment_data.first_point.y
-			last_point.y = last_point.y + segment_data.last_point.y
-		first_point.x = first_point.x/len(data.segments)
-		first_point.y = first_point.y /len(data.segments)
-		last_point.x = last_point.x /len(data.segments)
-		last_point.y = last_point.y /len(data.segments)
+			for segment_data in data.segments:
+				first_point.x = first_point.x + segment_data.first_point.x
+				last_point.x = last_point.x + segment_data.last_point.x
+				first_point.y = first_point.y + segment_data.first_point.y
+				last_point.y = last_point.y + segment_data.last_point.y
+			first_point.x = first_point.x/len(data.segments)
+			first_point.y = first_point.y /len(data.segments)
+			last_point.x = last_point.x /len(data.segments)
+			last_point.y = last_point.y /len(data.segments)
 
-                print("first_point: " + str(first_point))
-                print("last_point: " + str(last_point))
+			print("first_point: " + str(first_point))
+			print("last_point: " + str(last_point))
 
-		if(last_point.x == first_point.x):
-			acker_data.drive.steering_angle = -26
-		else:
-			rospy.loginfo
-			gradient = (last_point.y - first_point.y)/(last_point.x - first_point.x)
-			theta = (math.atan(gradient)*180)/math.pi
-
-			# ax+by+c = 0
-			a = gradient
-			b = -1
-			c = -gradient*first_point.x + first_point.y
-
-			lateral = abs(c)/math.sqrt(a**2 + b**2)
-			
-			acker_data.drive.steering_angle = -(theta*26/self.max_theta) * self.theta_error_factor + (lateral - self.lateral_offset) * self.lateral_error_factor
-                        acker_data.drive.steering_angle = int(acker_data.drive.steering_angle)
-
-                        print("theta error: " + str(-(theta*26/self.max_theta)))
-                        print("lateral error: " + str(lateral - self.lateral_offset))
-                
-		        if (acker_data.drive.steering_angle > 0):
-			    acker_data.drive.steering_angle = int(acker_data.drive.steering_angle/self.right_steer_scale)
-                        elif (acker_data.drive.steering_angle < 0):
-                            acker_data.drive.steering_angle = acker_data.drive.steering_angle - self.left_steer_offset
-
-			if (acker_data.drive.steering_angle > 26):  # max steering
-				acker_data.drive.steering_angle = 26
-			elif (acker_data.drive.steering_angle < -26):
+			if(last_point.x == first_point.x):
 				acker_data.drive.steering_angle = -26
 			else:
-				pass
+				rospy.loginfo
+				gradient = (last_point.y - first_point.y)/(last_point.x - first_point.x)
+				theta = (math.atan(gradient)*180)/math.pi
 
+				# ax+by+c = 0
+				a = gradient
+				b = -1
+				c = -gradient*first_point.x + first_point.y
 
-		acker_data.drive.speed = self.throttle
+				lateral = abs(c)/math.sqrt(a**2 + b**2)
 				
-		print("speed : " + str(acker_data.drive.speed))
-		print("steering : " + str(acker_data.drive.steering_angle))
-		print("-----------------------------------")
+				acker_data.drive.steering_angle = -(theta*26/self.max_theta) * self.theta_error_factor + (lateral - self.lateral_offset) * self.lateral_error_factor
+				acker_data.drive.steering_angle = int(acker_data.drive.steering_angle)
 
-		# don't send messages if detect a crosswalk line.
-		if self.is_detect_crosswalk == False:
-			self.pub.publish(acker_data)
+				print("theta error: " + str(-(theta*26/self.max_theta)))
+				print("lateral error: " + str(lateral - self.lateral_offset))
+			
+				if (acker_data.drive.steering_angle > 0):
+				    acker_data.drive.steering_angle = int(acker_data.drive.steering_angle/self.right_steer_scale)
+				elif (acker_data.drive.steering_angle < 0):
+				    acker_data.drive.steering_angle = acker_data.drive.steering_angle - self.left_steer_offset
+
+				if (acker_data.drive.steering_angle > 26):  # max steering
+					acker_data.drive.steering_angle = 26
+				elif (acker_data.drive.steering_angle < -26):
+					acker_data.drive.steering_angle = -26
+				else:
+					pass
+
+
+			acker_data.drive.speed = self.throttle
+					
+			print("speed : " + str(acker_data.drive.speed))
+			print("steering : " + str(acker_data.drive.steering_angle))
+			print("-----------------------------------")
+
+			# don't send messages if detect a crosswalk line.
+			if self.finish_flag== False:
+				self.pub.publish(acker_data)
 		
 		
 if __name__ == '__main__':
