@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <node pkg="laser_filters" type="scan_to_scan_filter_chain" output="screen" name="laser_filter">
+  <node pkg="laser_filters" type="scan_to_scan_filter_chain" output="screen" name="u_turn_laser_filter">
 	  <rosparam command="load" file="$(find u_turn)/launch/box_filter.yaml" />
 	  <remap from="scan_filtered" to="u_turn_scan_filtered"/>
   </node>
@@ -8,16 +8,16 @@
 
   <node pkg="u_turn" name="u_turn" type="u_turn_path.py" output="screen">
 	<remap from="raw_obstacles" to="u_turn_raw_obstacles"/>
-	  <param name="throttle" value="3" />
+	  <param name="throttle" value="4" />
 	  <param name="max_theta" value="45" />
 	  <param name="lateral_offset" type="double" value="4.0" /> <!-- car: 0.6 -->
 	  <param name="theta_error_factor" type="double" value="1.2" />
 	  <param name="lateral_error_factor" type="double" value="15.0" />
 	  <param name="right_steer_scale" type="double" value="1.5" />
-	  <param name="left_steer_offset" value="6" />
+	  <param name="left_steer_offset" value="8" />
   </node>
 
-  <node name="obstacle_extractor" pkg="obstacle_detector" type="obstacle_extractor_node">
+  <node name="u_turn_obstacle_extractor" pkg="obstacle_detector" type="obstacle_extractor_node">
 	<remap from="scan" to="u_turn_scan_filtered"/>
 	<remap from="raw_obstacles" to="u_turn_raw_obstacles"/>
     <param name="active"               value="true"/>
